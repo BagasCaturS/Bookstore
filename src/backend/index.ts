@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -91,11 +92,15 @@ app.post('/register', async (req, res) => {
         return;
     }
 
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(userPassword, saltRounds);
+
+
     const newUser = new User({
         userName,
         userEmail,
-        userPassword
-    })
+        userPassword: hashedPassword, // Use hashed password
+    });
 
     await newUser.save();
     console.log('User created successfully:', newUser);
@@ -113,7 +118,11 @@ app.post('/login', async (req, res) => {
         res.status(404).send({ message: 'Email tidak terdaftar' });
         return;
     }
-    if (findUser.userPassword !== userPassword) {
+
+    const isPasswordValid = await bcrypt.compare(userPassword, findUser.userPassword ?? '');
+
+
+    if (!isPasswordValid) {
         console.log('Password tidak sesuai for email:', userEmail);
         res.status(401).send({ message: 'Password tidak sesuai' });
         return;
